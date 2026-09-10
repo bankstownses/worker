@@ -246,6 +246,14 @@ export class BkkState {
     return null;
   }
 
+  // Whether any vehicle still has this incident in its queue or
+  // incoming queue -- i.e. a team is still actively tasked to it.
+  hasActiveTeams(incidentId) {
+    return Object.values(this.data.vehicleStates).some((v) =>
+      (v.queue || []).some((j) => j.id === incidentId) || (v.incomingQueue || []).some((j) => j.id === incidentId)
+    );
+  }
+
   // ---------------------------------------------------------------
   // ACTIONS -- one handler per action type, same behaviour as
   // bkk_server.js's `actions` object, ported to methods so they can
@@ -351,7 +359,7 @@ export class BkkState {
       RECCE_INCIDENT(payload) {
         const { incidentId } = payload;
         self.updateIncidentEverywhere(incidentId, (i) => ({ ...i, reconnoitered: true }));
-        self.setIncidentStatus(incidentId, "Active", "Reconnoitered");
+        self.addIncidentTimelineEntry(incidentId, "Recce'd", "Reconnoitered");
         return {};
       },
 
@@ -469,6 +477,10 @@ export class BkkState {
         self.data.completedJobs.unshift({ job, mode, formData, vehicle, onBoard });
         self.logEventFor(vehicle, `${vehicle} Complete on incident ${self.shortId(jobId)}`);
         self.addIncidentTimelineEntry(jobId, "Team Completion Notes", `${vehicle} — ${(formData && formData.note) || "Completed, no note"}`);
+        const inc = self.data.allIncidents.find((i) => i.id === jobId);
+        if (inc && inc.status === "Tasked" && !self.hasActiveTeams(jobId)) {
+          self.setIncidentStatus(jobId, "Active", "No teams remaining");
+        }
         return {};
       },
 
@@ -484,6 +496,10 @@ export class BkkState {
         const onBoard = v.crew.filter((c) => c.on).map((c) => `${c.first} ${c.last}`);
         self.data.calledOffJobs.unshift({ job, reason, vehicle, onBoard });
         self.logEventFor(vehicle, `${vehicle} Called Off incident ${self.shortId(jobId)} — ${reason}`);
+        const inc = self.data.allIncidents.find((i) => i.id === jobId);
+        if (inc && inc.status === "Tasked" && !self.hasActiveTeams(jobId)) {
+          self.setIncidentStatus(jobId, "Active", "No teams remaining");
+        }
         return {};
       },
 
