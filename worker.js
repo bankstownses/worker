@@ -351,7 +351,7 @@ export class BkkState {
       RECCE_INCIDENT(payload) {
         const { incidentId } = payload;
         self.updateIncidentEverywhere(incidentId, (i) => ({ ...i, reconnoitered: true }));
-        self.addIncidentTimelineEntry(incidentId, "Recce'd", "Reconnoitered");
+        self.setIncidentStatus(incidentId, "Active", "Reconnoitered");
         return {};
       },
 

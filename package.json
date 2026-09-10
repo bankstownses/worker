@@ -1,7 +1,6 @@
 {
-  "name": "bkk-worker",
-  "private": true,
   "dependencies": {
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "wrangler": "^4.129.1"
   }
 }
