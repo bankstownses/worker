@@ -1,0 +1,21 @@
+name = "bkk-worker"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[[routes]]
+pattern = "api.bankstownses.com"
+zone_name = "bankstownses.com"
+custom_domain = true
+
+[[durable_objects.bindings]]
+name = "BKK_STATE"
+class_name = "BkkState"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["BkkState"]
+
+[vars]
+VAPID_PUBLIC_KEY = "BBIUJEzuGXw04DeSOEy_4Hrt1w8J54mEgaM-vBRZXLGZca5tZrRZlEglEHx-NnUS5_Sl43IlKj6Bw3ytACrxMuU"
