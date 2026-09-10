@@ -176,6 +176,7 @@ export class BkkState {
       if (!vs) return;
       vs.queue = vs.queue.map((i) => (i.id === incidentId ? updater(i) : i));
       vs.incomingQueue = vs.incomingQueue.map((i) => (i.id === incidentId ? updater(i) : i));
+      if (vs.activeJob && vs.activeJob.id === incidentId) vs.activeJob = updater(vs.activeJob);
     });
   }
 
