@@ -84,6 +84,7 @@ function initialState() {
     unassignedIncidents: [],
     incidentNotes: {},
     incidentTimelines: {},
+    incidentProviders: {},
     pushSubscriptions: {},
     incidentCounter: 1,
     ssMembers: [],
@@ -581,6 +582,76 @@ export class BkkState {
         note.actionRequired = !!stillActionRequired;
         note.resolved = !stillActionRequired;
         return { note };
+      },
+
+      // Providers -- kept as their own list per incident (not inline on
+      // the incident record, same reasoning as notes/photos: keeps the
+      // regular state feed lean). Only ATTACH_PROVIDER's Agency/Company
+      // field is required, matching the real Beacon form.
+      ATTACH_PROVIDER(payload) {
+        const { incidentId, agency, reference, details } = payload;
+        if (!agency || !agency.trim()) throw new Error("Agency/Company is required");
+        if (!self.data.incidentProviders[incidentId]) self.data.incidentProviders[incidentId] = [];
+        const provider = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          agency: agency.trim(),
+          reference: (reference || "").trim() || null,
+          details: (details || "").trim() || null,
+          status: "Requested",
+          referNote: null, referTimestamp: null,
+          completeDetails: null, completeTimestamp: null,
+        };
+        self.data.incidentProviders[incidentId].unshift(provider);
+        self.addIncidentTimelineEntry(incidentId, "Provider Attached", `${provider.agency} added to incident - ${provider.details || ""}`);
+        return { provider };
+      },
+
+      CANCEL_PROVIDER(payload) {
+        const { incidentId, providerId } = payload;
+        const providers = self.data.incidentProviders[incidentId];
+        const provider = providers && providers.find((p) => p.id === providerId);
+        if (!provider) throw new Error("Provider not found");
+        provider.status = "Cancelled";
+        self.addIncidentTimelineEntry(incidentId, "Cancel", `${provider.agency} removed from incident - ${provider.details || ""}`);
+        return { provider };
+      },
+
+      REFER_PROVIDER(payload) {
+        const { incidentId, providerId, note, timestamp } = payload;
+        const providers = self.data.incidentProviders[incidentId];
+        const provider = providers && providers.find((p) => p.id === providerId);
+        if (!provider) throw new Error("Provider not found");
+        provider.status = "Referred";
+        provider.referNote = (note || "").trim() || null;
+        provider.referTimestamp = timestamp ? new Date(timestamp).toISOString() : new Date().toISOString();
+        self.addIncidentTimelineEntry(incidentId, "Referred", provider.referNote || "", provider.referTimestamp);
+        return { provider };
+      },
+
+      COMPLETE_PROVIDER(payload) {
+        const { incidentId, providerId, details, timestamp } = payload;
+        const providers = self.data.incidentProviders[incidentId];
+        const provider = providers && providers.find((p) => p.id === providerId);
+        if (!provider) throw new Error("Provider not found");
+        provider.status = "Complete";
+        provider.completeDetails = (details || "").trim() || null;
+        provider.completeTimestamp = timestamp ? new Date(timestamp).toISOString() : new Date().toISOString();
+        // No timeline entry for a plain provider completion.
+        return { provider };
+      },
+
+      COMPLETE_PROVIDER_AND_INCIDENT(payload) {
+        const { incidentId, providerId, details, timestamp } = payload;
+        if (self.hasActiveTeams(incidentId)) throw new Error("Cannot complete the incident while a team is still active");
+        const providers = self.data.incidentProviders[incidentId];
+        const provider = providers && providers.find((p) => p.id === providerId);
+        if (!provider) throw new Error("Provider not found");
+        const ts = timestamp ? new Date(timestamp).toISOString() : new Date().toISOString();
+        provider.status = "Complete";
+        provider.completeDetails = (details || "").trim() || null;
+        provider.completeTimestamp = ts;
+        self.setIncidentStatus(incidentId, "Complete", "Incident completed on supplier complete", ts);
+        return { provider };
       },
 
       CREATE_SES_MEMBER(payload) {
