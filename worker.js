@@ -624,6 +624,11 @@ export class BkkState {
         provider.status = "Referred";
         provider.referNote = (note || "").trim() || null;
         provider.referTimestamp = timestamp ? new Date(timestamp).toISOString() : new Date().toISOString();
+        // Only the status field changes here -- the timeline entry below
+        // already carries the note/timestamp, so this deliberately isn't
+        // routed through setIncidentStatus (that would log a second,
+        // duplicate entry for the same action).
+        self.updateIncidentEverywhere(incidentId, (i) => ({ ...i, status: "Referred" }));
         self.addIncidentTimelineEntry(incidentId, "Referred", provider.referNote || "", provider.referTimestamp);
         return { provider };
       },
